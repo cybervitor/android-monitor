@@ -4,6 +4,15 @@ set -Eeuo pipefail
 #  CONFIGURATION 
 readonly PORT_GNIREHTET=31416  # Default port used internally by gnirehtet relay
 readonly PORT_SUNSHINE=47989   # Default Sunshine control port
+
+readonly SUNSHINE_UUID="55CABDFE-F984-5F29-4901-E25DF21BDF30"	# UUID from your sunshine instance
+readonly SUNSHINE_COMPUTER_NAME="arch-vitor"	# Name of the computer where sunshine is running
+readonly DESKTOP_APP_ID="881448767"	    # App_Id for desktop streaming app on sunshine
+
+# had to run `sh -c "echo $SUNSHINE_APP_ID > /tmp/sunshine_id.txt"`
+# on Sunshine's Web Interface to grab the AppId
+# Let me know if there's a better way to grab the SUNSHINE_APP_ID for the desktop app
+
 readonly RESOLUTION="1920x1200@60"
 readonly MON_NAME="Virtual-1"
 readonly TIMEOUT=15
@@ -12,23 +21,22 @@ PIDS=()
 
 cleanup() {
     local exit_code=$?
-    trap - SIGINT SIGTERM EXIT      # Prevent trap recursion by un-trapping signals
+    trap - SIGINT SIGTERM EXIT      			# Prevent trap recursion by un-trapping signals
     
     echo -e "\n\n[~] Tearing down sessions..."
     
-    # Kill background process groups safely
-    for pid in "${PIDS[@]:-}"; do
+    for pid in "${PIDS[@]:-}"; do 				# Kill background process groups safely
         kill "$pid" 2>/dev/null || true
     done
     
-    if hyprctl monitors | grep -q "^Monitor $MON_NAME"; then         # Destroy headless monitor
+    if hyprctl monitors | grep -q "^Monitor $MON_NAME"; then	# Destroy headless monitor
         echo "[+] Destroying headless monitor: $MON_NAME"
         hyprctl output destroy "$MON_NAME" >/dev/null 2>&1
     fi
     echo "[+] Done. Goodbye!"
     exit "$exit_code"
 }
-trap cleanup SIGINT SIGTERM EXIT    # traps (Ctrl+C, unexpected crashes) -> cleanuo function above
+trap cleanup SIGINT SIGTERM EXIT    # traps Ctrl+C and unexpected crashes in cleanup function above
 
 check_adb(){
     echo "[*] Validation: Checking for attached Android devices..."
@@ -94,11 +102,10 @@ print_info_and_hold(){
     echo " Press [Ctrl+C] to end your workspace."
 	
     # Fire the shortcut trampoline to execute the targeted stream pipeline
-    # had to run sh -c "echo $SUNSHINE_APP_ID > /tmp/sunshine_id.txt" on sunshine web interface to grab the AppId
     adb shell am start -n com.limelight/com.limelight.ShortcutTrampoline \
-        --es "UUID" "55CABDFE-F984-5F29-4901-E25DF21BDF30" \
-        --es "Name" "arch-vitor" \
-        --es "AppId" "881448767" >/dev/null 2>&1
+        --es "UUID" "$SUNSHINE_UUID" \
+        --es "Name" "$SUNSHINE_COMPUTER_NAME" \
+        --es "AppId" "$DESKTOP_APP_ID" >/dev/null 2>&1
     
     local status=0
 
